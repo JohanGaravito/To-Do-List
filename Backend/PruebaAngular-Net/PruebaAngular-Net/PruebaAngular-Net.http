@@ -1,0 +1,6 @@
+@PruebaAngular_Net_HostAddress = http://localhost:5271
+
+GET {{PruebaAngular_Net_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
