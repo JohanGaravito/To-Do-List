@@ -1,0 +1,113 @@
+CREATE DATABASE ToDoListDB;
+GO
+USE ToDoListDB;
+GO
+/*drop database ToDoListDB*/
+
+-- 1. Usuarios (login)
+CREATE TABLE Usuarios (
+    IdUsuario INT IDENTITY(1,1) PRIMARY KEY,
+    Nombre VARCHAR(40) NOT NULL,
+    Email VARCHAR(40) NOT NULL UNIQUE,
+    ContrasenaHash VARCHAR(255) NOT NULL,
+    FechaRegistro DATETIME  DEFAULT GETDATE(),
+    Activo varchar(40)
+);
+
+-- 2. Tareas
+CREATE TABLE Tareas (
+    IdTarea INT IDENTITY(1,1) PRIMARY KEY,
+    IdUsuario INT NOT NULL,
+    Titulo VARCHAR(150) NOT NULL,
+    Descripcion VARCHAR(MAX) NULL,
+    Estado VARCHAR(40),
+    FechaCreacion DATETIME DEFAULT GETDATE(),
+    FechaActualizacion DATETIME NULL,
+    FOREIGN KEY (IdUsuario) REFERENCES Usuarios(IdUsuario)
+);
+go
+
+/* Procedimiento almacenado, crear */
+CREATE OR ALTER PROCEDURE sp_Tarea_Crear
+  @IdUsuario INT,
+  @Titulo VARCHAR(150),
+  @Descripcion VARCHAR(MAX) = NULL,
+  @Estado VARCHAR(40) = 'Pendiente'
+AS
+BEGIN
+  SET NOCOUNT ON;
+  INSERT INTO Tareas (IdUsuario, Titulo, Descripcion, Estado)
+  VALUES (@IdUsuario, @Titulo, @Descripcion, @Estado);
+
+  SELECT * FROM Tareas WHERE IdTarea = SCOPE_IDENTITY();
+END
+GO
+
+
+/*uso*/
+
+EXEC sp_Tarea_Crear @IdUsuario=1, @Titulo='Mi tarea', @Descripcion='Detalle';
+
+/* Eliminar */
+
+CREATE OR ALTER PROCEDURE sp_Tarea_Eliminar
+  @IdTarea INT
+AS
+BEGIN
+  SET NOCOUNT ON;
+  DELETE FROM Tareas WHERE IdTarea = @IdTarea;
+END
+GO
+
+
+
+/*Modificar */
+CREATE OR ALTER PROCEDURE sp_Tarea_Modificar
+  @IdTarea INT,
+  @IdUsuario INT = NULL,
+  @Titulo VARCHAR(150) = NULL,
+  @Descripcion VARCHAR(MAX) = NULL,
+  @Estado VARCHAR(40) = NULL
+AS
+BEGIN
+  SET NOCOUNT ON;
+  UPDATE Tareas
+     SET IdUsuario = COALESCE(@IdUsuario, IdUsuario),
+         Titulo = COALESCE(@Titulo, Titulo),
+         Descripcion = COALESCE(@Descripcion, Descripcion),
+         Estado = COALESCE(@Estado, Estado),
+         FechaActualizacion = GETDATE()
+   WHERE IdTarea = @IdTarea;
+
+  SELECT * FROM Tareas WHERE IdTarea = @IdTarea;
+END
+GO
+
+
+
+-- Consultar por Id
+CREATE OR ALTER PROCEDURE sp_Tarea_ConsultarPorId
+  @IdTarea INT
+AS
+BEGIN
+  SET NOCOUNT ON;
+  SELECT * FROM Tareas WHERE IdTarea = @IdTarea;
+END
+GO
+
+-- Listar con filtros (opcional)
+CREATE OR ALTER PROCEDURE sp_Tarea_Listar
+  @IdUsuario INT = NULL,
+  @Estado VARCHAR(40) = NULL,
+  @Texto VARCHAR(150) = NULL    -- busca en Titulo/Descripcion
+AS
+BEGIN
+  SET NOCOUNT ON;
+  SELECT *
+  FROM Tareas
+  WHERE (@IdUsuario IS NULL OR IdUsuario=@IdUsuario)
+    AND (@Estado IS NULL OR Estado=@Estado)
+    AND (@Texto IS NULL OR Titulo LIKE '%'+@Texto+'%' OR Descripcion LIKE '%'+@Texto+'%')
+  ORDER BY FechaCreacion DESC;
+END
+GO
